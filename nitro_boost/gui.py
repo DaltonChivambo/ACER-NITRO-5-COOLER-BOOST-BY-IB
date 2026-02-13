@@ -38,13 +38,14 @@ class Slider(tk.Frame):
         self.from_ = from_
         self.to = to
         self._value = max(from_, min(to, value))
+        self._min_width = width
         self._width = width
         self.height = height
         self._dragging = False
         self.configure(bg=parent.cget("bg") if hasattr(parent, "cget") else CARD)
 
         self.canvas = tk.Canvas(self, width=width, height=height, bg=CARD, highlightthickness=0, cursor="hand2")
-        self.canvas.pack(side=tk.LEFT)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.label = tk.Label(self, text=f"{self._value}%", font=("", 10, "bold"), bg=CARD, fg=ACCENT, width=5)
         self.label.pack(side=tk.LEFT, padx=(10, 0))
 
@@ -57,6 +58,7 @@ class Slider(tk.Frame):
         self.bind("<MouseWheel>", self._on_wheel)
         self.bind("<Button-4>", self._on_wheel_linux)
         self.bind("<Button-5>", self._on_wheel_linux)
+        self.canvas.bind("<Configure>", lambda e: self._on_resize(e))
         self._draw()
 
     def get(self):
@@ -68,7 +70,13 @@ class Slider(tk.Frame):
         self._draw()
 
     def _get_width(self):
-        return self._width
+        try:
+            w = self.canvas.winfo_width()
+            if w > 20:
+                return max(self._min_width, w)
+        except tk.TclError:
+            pass
+        return max(self._min_width, self._width)
 
     def _x_to_value(self, x):
         w = self._get_width() - 20
@@ -81,6 +89,10 @@ class Slider(tk.Frame):
         w = self._get_width() - 20
         frac = (v - self.from_) / (self.to - self.from_) if self.to != self.from_ else 0
         return 10 + frac * w
+
+    def _on_resize(self, e):
+        if e.width > 20:
+            self._draw()
 
     def _draw(self):
         self.canvas.delete("all")
@@ -123,8 +135,8 @@ class NitroBoostApp:
         self.root = tk.Tk()
         self.root.title("Acer Nitro 5 Cooler Boost by IB")
         self.root.configure(bg=BG)
-        self.root.minsize(360, 420)
-        self.root.geometry("400x520")
+        self.root.minsize(420, 620)
+        self.root.geometry("460x680")
         self.root.resizable(True, True)
 
         self.boost = NitroBoost()
@@ -181,7 +193,7 @@ class NitroBoostApp:
 
         # Ventoinhas (RPM + temperatura)
         fan_frame = _card(content, padx=16, pady=12)
-        fan_frame.pack(fill=tk.X, pady=(0, 10))
+        fan_frame.pack(fill=tk.X, expand=False, pady=(0, 10))
         tk.Label(fan_frame, text="CPU e GPU", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 12))
         cpu_info_row = tk.Frame(fan_frame, bg=CARD)
         cpu_info_row.pack(fill=tk.X, pady=(0, 8))
@@ -194,7 +206,7 @@ class NitroBoostApp:
 
         # Automático
         auto_frame = _card(content, padx=16, pady=12)
-        auto_frame.pack(fill=tk.X, pady=(0, 8))
+        auto_frame.pack(fill=tk.X, expand=False, pady=(0, 8))
         tk.Label(auto_frame, text="AUTOMÁTICO", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
         self.auto_btn = tk.Button(
             auto_frame, text="  Automático  ", font=("", 12, "bold"),
@@ -206,7 +218,7 @@ class NitroBoostApp:
 
         # Cooler Boost
         boost_frame = _card(content, padx=16, pady=12)
-        boost_frame.pack(fill=tk.X, pady=(0, 8))
+        boost_frame.pack(fill=tk.X, expand=False, pady=(0, 8))
         tk.Label(boost_frame, text="COOLER BOOST (máximo)", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
         boost_row = tk.Frame(boost_frame, bg=CARD)
         boost_row.pack(fill=tk.X)
@@ -225,21 +237,21 @@ class NitroBoostApp:
 
         # Manual
         manual_frame = _card(content, padx=16, pady=12)
-        manual_frame.pack(fill=tk.X, pady=(0, 8))
+        manual_frame.pack(fill=tk.X, expand=False, pady=(0, 8))
         tk.Label(manual_frame, text="MANUAL", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 12))
         tk.Label(manual_frame, text="Defina a velocidade (0-100%) e clique em Aplicar", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
         # CPU
         cpu_row = tk.Frame(manual_frame, bg=CARD)
         cpu_row.pack(fill=tk.X, pady=(0, 8))
         tk.Label(cpu_row, text="CPU:", font=("", 11), bg=CARD, fg=TEXT, width=6, anchor=tk.W).pack(side=tk.LEFT)
-        self.cpu_slider = Slider(cpu_row, from_=0, to=100, value=50, width=200, height=28, bg=CARD)
-        self.cpu_slider.pack(side=tk.LEFT, padx=(8, 0))
+        self.cpu_slider = Slider(cpu_row, from_=0, to=100, value=50, width=180, height=28, bg=CARD)
+        self.cpu_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
         # GPU
         gpu_row = tk.Frame(manual_frame, bg=CARD)
         gpu_row.pack(fill=tk.X, pady=(0, 12))
         tk.Label(gpu_row, text="GPU:", font=("", 11), bg=CARD, fg=TEXT, width=6, anchor=tk.W).pack(side=tk.LEFT)
-        self.gpu_slider = Slider(gpu_row, from_=0, to=100, value=50, width=200, height=28, bg=CARD)
-        self.gpu_slider.pack(side=tk.LEFT, padx=(8, 0))
+        self.gpu_slider = Slider(gpu_row, from_=0, to=100, value=50, width=180, height=28, bg=CARD)
+        self.gpu_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
         ttk.Button(manual_frame, text="Aplicar ventoinhas", command=self._apply_fans).pack(anchor=tk.W, pady=(8, 0))
 
     def _toggle_opts(self):
