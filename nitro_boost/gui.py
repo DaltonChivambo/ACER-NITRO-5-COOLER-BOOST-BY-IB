@@ -139,7 +139,10 @@ class NitroBoostApp:
         self.root.geometry("460x680")
         self.root.resizable(True, True)
 
-        # Ícone da janela (PNG - tkinter PhotoImage suporta PNG)
+        # WM_CLASS: evita "Tk" na barra de tarefas, usa nome do app
+        self.root.wm_class("NitroBoost", "nitro-boost")
+
+        # Ícone da janela (PNG - taskbar e título)
         _base = os.path.dirname(os.path.dirname(__file__))
         _icon_paths = [
             os.path.join(_base, "nitro-boost-ib.png"),
@@ -151,6 +154,8 @@ class NitroBoostApp:
                 try:
                     self._icon_photo = tk.PhotoImage(file=p)
                     self.root.iconphoto(True, self._icon_photo)
+                    # Low-level para alguns WMs no Linux
+                    self.root.tk.call("wm", "iconphoto", self.root._w, self._icon_photo)
                 except Exception:
                     pass
                 break

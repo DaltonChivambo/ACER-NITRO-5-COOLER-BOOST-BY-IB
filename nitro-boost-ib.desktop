@@ -6,6 +6,7 @@ GenericName=Controle de ventoinhas e temperatura
 Comment=Controle Cooler Boost do Acer Nitro 5 (AN515-44, 46, 56, 57, 58) by IB
 Exec=sh -c "pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS /usr/local/lib/nitro-boost/nitro-boost"
 Icon=nitro-boost-ib
+StartupWMClass=NitroBoost
 Terminal=false
 Categories=System;Settings;HardwareSettings;
 Keywords=acer;nitro;nitro 5;an515;cooler;cooler boost;fan;ventoinha;interbantu;ib;temperatura;rpm;
