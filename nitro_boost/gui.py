@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Nitro 5 Cooler Boost - App desktop (apenas ventoinhas em RPM)."""
 
+import fcntl
 import os
 import sys
 import subprocess
@@ -122,13 +123,15 @@ class NitroBoostApp:
         self.root = tk.Tk()
         self.root.title("Acer Nitro 5 Cooler Boost by IB")
         self.root.configure(bg=BG)
-        self.root.minsize(380, 420)
-        self.root.geometry("420x480")
+        self.root.minsize(360, 420)
+        self.root.geometry("400x520")
+        self.root.resizable(True, True)
 
         self.boost = NitroBoost()
         self._cpu_boost = False
         self._gpu_boost = False
         self._poll_id = None
+        self._lock_fd = None
 
         style = ttk.Style()
         style.theme_use("clam")
@@ -139,11 +142,11 @@ class NitroBoostApp:
         self._start_poll()
 
     def _setup_ui(self):
-        main = tk.Frame(self.root, bg=BG, padx=20, pady=20)
+        main = tk.Frame(self.root, bg=BG, padx=16, pady=14)
         main.pack(fill=tk.BOTH, expand=True)
 
         header = tk.Frame(main, bg=BG)
-        header.pack(fill=tk.X, pady=(0, 16))
+        header.pack(fill=tk.X, pady=(0, 12))
         tk.Label(header, text="❄", font=("", 28), bg=BG, fg=ACCENT).pack(side=tk.LEFT, padx=(0, 12))
         tit = tk.Frame(header, bg=BG)
         tit.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -151,10 +154,34 @@ class NitroBoostApp:
         tk.Label(tit, text="AN515-44, 46, 56, 57, 58 • by IB", font=("", 9), bg=BG, fg=TEXT_MUTED).pack(anchor=tk.W)
         self.badge = tk.Label(header, text="...", font=("", 9), bg=BG, fg=TEXT_MUTED, padx=8, pady=4)
         self.badge.pack(side=tk.RIGHT)
+        opts_btn = tk.Button(
+            header, text=" ⚙ Opções ", font=("", 9), bg=BORDER, fg=TEXT,
+            relief=tk.FLAT, padx=10, pady=4, cursor="hand2", command=self._toggle_opts,
+            highlightthickness=0, borderwidth=0,
+        )
+        opts_btn.pack(side=tk.RIGHT, padx=(0, 8))
+
+        # Painel Opções (oculto até clicar em Opções)
+        self._opts_visible = False
+        self.opts_panel = _card(main, padx=16, pady=12)
+        tk.Label(self.opts_panel, text="OPÇÕES", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
+        uninstall_btn = tk.Button(
+            self.opts_panel, text="  Desinstalar aplicativo  ", font=("", 10),
+            bg=BORDER, fg=TEXT, activebackground=DANGER, activeforeground=TEXT,
+            relief=tk.FLAT, padx=16, pady=8, cursor="hand2", command=self._uninstall,
+            highlightthickness=0, borderwidth=0,
+        )
+        uninstall_btn.pack(anchor=tk.W)
+        self.opts_panel.pack_forget()
+
+        # Conteúdo principal (opts_panel será inserido antes quando visível)
+        self.content_frame = tk.Frame(main, bg=BG)
+        self.content_frame.pack(fill=tk.BOTH, expand=True)
+        content = self.content_frame
 
         # Ventoinhas (RPM + temperatura)
-        fan_frame = _card(main, padx=20, pady=16)
-        fan_frame.pack(fill=tk.X, pady=(0, 16))
+        fan_frame = _card(content, padx=16, pady=12)
+        fan_frame.pack(fill=tk.X, pady=(0, 10))
         tk.Label(fan_frame, text="CPU e GPU", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 12))
         cpu_info_row = tk.Frame(fan_frame, bg=CARD)
         cpu_info_row.pack(fill=tk.X, pady=(0, 8))
@@ -166,8 +193,8 @@ class NitroBoostApp:
         self.gpu_rpm_lbl.pack(side=tk.LEFT)
 
         # Automático
-        auto_frame = _card(main, padx=20, pady=16)
-        auto_frame.pack(fill=tk.X, pady=(0, 10))
+        auto_frame = _card(content, padx=16, pady=12)
+        auto_frame.pack(fill=tk.X, pady=(0, 8))
         tk.Label(auto_frame, text="AUTOMÁTICO", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
         self.auto_btn = tk.Button(
             auto_frame, text="  Automático  ", font=("", 12, "bold"),
@@ -178,8 +205,8 @@ class NitroBoostApp:
         self.auto_btn.pack(anchor=tk.W)
 
         # Cooler Boost
-        boost_frame = _card(main, padx=20, pady=16)
-        boost_frame.pack(fill=tk.X, pady=(0, 10))
+        boost_frame = _card(content, padx=16, pady=12)
+        boost_frame.pack(fill=tk.X, pady=(0, 8))
         tk.Label(boost_frame, text="COOLER BOOST (máximo)", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
         boost_row = tk.Frame(boost_frame, bg=CARD)
         boost_row.pack(fill=tk.X)
@@ -197,8 +224,8 @@ class NitroBoostApp:
         self.gpu_boost_btn.pack(side=tk.LEFT)
 
         # Manual
-        manual_frame = _card(main, padx=20, pady=16)
-        manual_frame.pack(fill=tk.X, pady=(0, 10))
+        manual_frame = _card(content, padx=16, pady=12)
+        manual_frame.pack(fill=tk.X, pady=(0, 8))
         tk.Label(manual_frame, text="MANUAL", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 12))
         tk.Label(manual_frame, text="Defina a velocidade (0-100%) e clique em Aplicar", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
         # CPU
@@ -215,16 +242,12 @@ class NitroBoostApp:
         self.gpu_slider.pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(manual_frame, text="Aplicar ventoinhas", command=self._apply_fans).pack(anchor=tk.W, pady=(8, 0))
 
-        # Opções
-        opts_frame = _card(main, padx=20, pady=16)
-        opts_frame.pack(fill=tk.X, pady=(16, 0))
-        tk.Label(opts_frame, text="OPÇÕES", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
-        tk.Button(
-            opts_frame, text="  Desinstalar aplicativo  ", font=("", 10),
-            bg=BORDER, fg=TEXT, activebackground=DANGER, activeforeground=TEXT,
-            relief=tk.FLAT, padx=16, pady=8, cursor="hand2", command=self._uninstall,
-            highlightthickness=0, borderwidth=0,
-        ).pack(anchor=tk.W)
+    def _toggle_opts(self):
+        self._opts_visible = not self._opts_visible
+        if self._opts_visible:
+            self.opts_panel.pack(fill=tk.X, pady=(0, 8), before=self.content_frame)
+        else:
+            self.opts_panel.pack_forget()
 
     def _uninstall(self):
         install_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -316,6 +339,18 @@ class NitroBoostApp:
             messagebox.showerror("Nitro Boost", "Falha ao definir velocidade. Tente modo Automático.")
 
     def _poll(self):
+        # Single instance: verificar se outra instância pediu foco
+        focus_file = os.path.expanduser("~/.cache/nitro-boost/focus-request")
+        if os.path.isfile(focus_file):
+            try:
+                os.remove(focus_file)
+            except OSError:
+                pass
+            self.root.lift()
+            self.root.attributes("-topmost", True)
+            self.root.after(100, lambda: self.root.attributes("-topmost", False))
+            self.root.focus_force()
+
         ok, _ = self.boost.is_available()
         if not ok:
             return
@@ -355,7 +390,33 @@ class NitroBoostApp:
     def _on_close(self):
         if self._poll_id:
             self.root.after_cancel(self._poll_id)
+        if hasattr(self, "_lock_fd") and self._lock_fd is not None:
+            try:
+                fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
+                os.close(self._lock_fd)
+            except (OSError, AttributeError):
+                pass
         self.root.destroy()
+
+
+def _try_single_instance():
+    """Retorna (lock_fd, True) se somos a única instância, ou (None, False) se outra já corre."""
+    cache_dir = os.path.expanduser("~/.cache/nitro-boost")
+    lock_path = os.path.join(cache_dir, ".lock")
+    focus_path = os.path.join(cache_dir, "focus-request")
+    os.makedirs(cache_dir, mode=0o700, exist_ok=True)
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        os.write(fd, str(os.getpid()).encode())
+        return fd, True
+    except (OSError, BlockingIOError):
+        # Outra instância tem o lock - pedir foco
+        try:
+            open(focus_path, "w").close()
+        except OSError:
+            pass
+        return None, False
 
 
 def main():
@@ -371,7 +432,13 @@ def main():
                 continue
         print("Execute com sudo: sudo nitro-boost --gui")
         sys.exit(1)
+
+    lock_fd, is_first = _try_single_instance()
+    if not is_first:
+        sys.exit(0)  # Outra instância vai receber o foco
+
     app = NitroBoostApp()
+    app._lock_fd = lock_fd
     app.run()
 
 
