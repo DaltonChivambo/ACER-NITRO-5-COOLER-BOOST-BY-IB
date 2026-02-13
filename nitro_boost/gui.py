@@ -135,14 +135,17 @@ class NitroBoostApp:
         self.root = tk.Tk()
         self.root.title("Acer Nitro 5 Cooler Boost by IB")
         self.root.configure(bg=BG)
-        self.root.minsize(420, 620)
-        self.root.geometry("460x680")
+        self.root.minsize(480, 620)
+        self.root.geometry("520x680")
         self.root.resizable(True, True)
 
-        # WM_CLASS: evita "Tk" na barra de tarefas, usa nome do app
-        self.root.wm_class("NitroBoost", "nitro-boost")
+        # WM_CLASS: evita "Tk" na barra de tarefas
+        try:
+            self.root.wm_class("NitroBoost", "nitro-boost")
+        except Exception:
+            pass
 
-        # Ícone da janela (PNG - taskbar e título)
+        # Ícone da janela (PNG)
         _base = os.path.dirname(os.path.dirname(__file__))
         _icon_paths = [
             os.path.join(_base, "nitro-boost-ib.png"),
@@ -154,8 +157,6 @@ class NitroBoostApp:
                 try:
                     self._icon_photo = tk.PhotoImage(file=p)
                     self.root.iconphoto(True, self._icon_photo)
-                    # Low-level para alguns WMs no Linux
-                    self.root.tk.call("wm", "iconphoto", self.root._w, self._icon_photo)
                 except Exception:
                     pass
                 break
@@ -466,13 +467,28 @@ def main():
         print("Execute com sudo: sudo nitro-boost --gui")
         sys.exit(1)
 
-    lock_fd, is_first = _try_single_instance()
-    if not is_first:
-        sys.exit(0)  # Outra instância vai receber o foco
+    lock_fd = None
+    try:
+        lock_fd, is_first = _try_single_instance()
+        if not is_first:
+            sys.exit(0)  # Outra instância vai receber o foco
+    except Exception:
+        lock_fd = None  # Continuar mesmo se o lock falhar
 
-    app = NitroBoostApp()
-    app._lock_fd = lock_fd
-    app.run()
+    try:
+        app = NitroBoostApp()
+        app._lock_fd = lock_fd
+        app.run()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("Nitro Boost", f"Erro ao iniciar:\n{e}")
+        except Exception:
+            print(f"Erro: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
