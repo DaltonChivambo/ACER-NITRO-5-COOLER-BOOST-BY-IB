@@ -135,8 +135,8 @@ class NitroBoostApp:
         self.root = tk.Tk()
         self.root.title("Acer Nitro 5 Cooler Boost by IB")
         self.root.configure(bg=BG)
-        self.root.minsize(520, 620)
-        self.root.geometry("560x680")
+        self.root.minsize(580, 620)
+        self.root.geometry("620x680")
         self.root.resizable(True, True)
 
         # WM_CLASS: evita "Tk" na barra de tarefas
