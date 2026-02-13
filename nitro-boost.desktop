@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Nitro 5 Cooler Boost
+Comment=Controle Cooler Boost do Acer Nitro 5 no Linux
+Exec=sh -c "pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY /usr/local/lib/nitro-boost/nitro-boost"
+Icon=preferences-system
+Terminal=false
+Categories=System;Settings;HardwareSettings;
+Keywords=acer;nitro;cooler;fan;ventoinha;

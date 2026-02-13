@@ -1,0 +1,9 @@
+// Permite executar Nitro Boost sem pedir senha (pkexec com env)
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.policykit.exec") {
+        var cmd = action.lookup("command_line") || "";
+        if (cmd.indexOf("nitro-boost") !== -1) {
+            return polkit.Result.YES;
+        }
+    }
+});
