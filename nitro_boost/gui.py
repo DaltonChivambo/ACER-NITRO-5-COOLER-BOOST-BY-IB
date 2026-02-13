@@ -174,6 +174,17 @@ class NitroBoostApp:
         self._setup_ui()
         self._check_availability()
         self._start_poll()
+        self._center_window()
+
+    def _center_window(self):
+        """Abre a janela no centro do ecrã."""
+        self.root.update_idletasks()
+        w, h = 620, 680
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        x = max(0, (sw - w) // 2)
+        y = max(0, (sh - h) // 2)
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
 
     def _setup_ui(self):
         main = tk.Frame(self.root, bg=BG, padx=16, pady=14)
@@ -244,6 +255,12 @@ class NitroBoostApp:
         tk.Label(boost_frame, text="COOLER BOOST (máximo)", font=("", 9), bg=CARD, fg=TEXT_MUTED).pack(anchor=tk.W, pady=(0, 10))
         boost_row = tk.Frame(boost_frame, bg=CARD)
         boost_row.pack(fill=tk.X)
+        self.both_boost_btn = tk.Button(
+            boost_row, text="MAX", font=("", 10, "bold"), bg=BORDER, fg=TEXT,
+            relief=tk.FLAT, padx=16, pady=10, cursor="hand2", command=self._toggle_both_boost,
+            highlightthickness=0, borderwidth=0,
+        )
+        self.both_boost_btn.pack(side=tk.LEFT, padx=(0, 8))
         self.cpu_boost_btn = tk.Button(
             boost_row, text="CPU: OFF", font=("", 10, "bold"), bg=BORDER, fg=TEXT,
             relief=tk.FLAT, padx=16, pady=10, cursor="hand2", command=self._toggle_cpu_boost,
@@ -318,6 +335,7 @@ class NitroBoostApp:
         else:
             self.badge.config(text="Erro", fg=DANGER)
             self.auto_btn.config(state=tk.DISABLED)
+            self.both_boost_btn.config(state=tk.DISABLED)
             self.cpu_boost_btn.config(state=tk.DISABLED)
             self.gpu_boost_btn.config(state=tk.DISABLED)
             messagebox.showerror("Nitro Boost", msg)
@@ -332,6 +350,11 @@ class NitroBoostApp:
             messagebox.showerror("Nitro Boost", "Falha ao definir modo automático.")
 
     def _update_boost_buttons(self):
+        both_on = self._cpu_boost and self._gpu_boost
+        if both_on:
+            self.both_boost_btn.config(text="MAX: ON", bg=ACCENT, activebackground=ACCENT_DIM, fg=BG)
+        else:
+            self.both_boost_btn.config(text="MAX", bg=BORDER, activebackground=BORDER, fg=TEXT)
         if self._cpu_boost:
             self.cpu_boost_btn.config(text="CPU: ON", bg=ACCENT, activebackground=ACCENT_DIM, fg=BG)
         else:
@@ -340,6 +363,20 @@ class NitroBoostApp:
             self.gpu_boost_btn.config(text="GPU: ON", bg=ACCENT, activebackground=ACCENT_DIM, fg=BG)
         else:
             self.gpu_boost_btn.config(text="GPU: OFF", bg=BORDER, activebackground=BORDER, fg=TEXT)
+
+    def _toggle_both_boost(self):
+        both_on = self._cpu_boost and self._gpu_boost
+        new_cpu = new_gpu = not both_on  # toggle: se ambos on -> off; senão -> on
+        if self.boost.set_cooler_boost_individual(new_cpu, new_gpu):
+            self._cpu_boost = new_cpu
+            self._gpu_boost = new_gpu
+            self._update_boost_buttons()
+            self.badge.config(
+                text="Cooler Boost: CPU+GPU" if new_cpu else "Automático",
+                fg=ACCENT if new_cpu else TEXT_MUTED,
+            )
+        else:
+            messagebox.showerror("Nitro Boost", "Falha ao alterar Cooler Boost.")
 
     def _toggle_cpu_boost(self):
         self._cpu_boost = not self._cpu_boost
