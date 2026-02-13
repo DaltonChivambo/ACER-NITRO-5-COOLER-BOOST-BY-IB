@@ -139,6 +139,22 @@ class NitroBoostApp:
         self.root.geometry("460x680")
         self.root.resizable(True, True)
 
+        # Ícone da janela (PNG - tkinter PhotoImage suporta PNG)
+        _base = os.path.dirname(os.path.dirname(__file__))
+        _icon_paths = [
+            os.path.join(_base, "nitro-boost-ib.png"),
+            "/usr/local/lib/nitro-boost/nitro-boost-ib.png",
+            "/usr/lib/nitro-boost/nitro-boost-ib.png",
+        ]
+        for p in _icon_paths:
+            if os.path.isfile(p):
+                try:
+                    self._icon_photo = tk.PhotoImage(file=p)
+                    self.root.iconphoto(True, self._icon_photo)
+                except Exception:
+                    pass
+                break
+
         self.boost = NitroBoost()
         self._cpu_boost = False
         self._gpu_boost = False

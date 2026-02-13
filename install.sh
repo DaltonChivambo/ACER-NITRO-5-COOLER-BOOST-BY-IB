@@ -14,6 +14,7 @@ cp "$SCRIPT_DIR/nitro-boost" "$INSTALL_DIR/"
   mkdir -p /usr/share/icons/hicolor/scalable/apps && \
   cp "$SCRIPT_DIR/nitro-boost-ib.svg" /usr/share/icons/hicolor/scalable/apps/nitro-boost-ib.svg && \
   gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
+[ -f "$SCRIPT_DIR/nitro-boost-ib.png" ] && cp "$SCRIPT_DIR/nitro-boost-ib.png" "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/nitro-boost"
 ln -sf "$INSTALL_DIR/nitro-boost" /usr/local/bin/nitro-boost
 
