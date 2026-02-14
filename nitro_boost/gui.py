@@ -5,6 +5,7 @@ import fcntl
 import os
 import sys
 import subprocess
+import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -177,6 +178,16 @@ class NitroBoostApp:
         self._start_poll()
         self._center_window()
 
+    def _run_async(self, func, on_done):
+        """Executa func() em thread e chama on_done(ok, error_msg) no main thread."""
+        def work():
+            try:
+                ok = func()
+                self.root.after(0, lambda: on_done(ok, None))
+            except Exception as e:
+                self.root.after(0, lambda: on_done(False, str(e)))
+        threading.Thread(target=work, daemon=True).start()
+
     def _center_window(self):
         """Abre a janela no centro do ecrã."""
         self.root.update_idletasks()
@@ -345,13 +356,20 @@ class NitroBoostApp:
             messagebox.showerror("Nitro Boost", msg)
 
     def _set_auto(self):
-        if self.boost.set_cooler_boost(False):
-            self._cpu_boost = False
-            self._gpu_boost = False
-            self._update_boost_buttons()
-            self.badge.config(text="Automático", fg=ACCENT)
-        else:
-            messagebox.showerror("Nitro Boost", "Falha ao definir modo automático.")
+        def do():
+            return self.boost.set_cooler_boost(False)
+        def done(ok, err):
+            if err:
+                messagebox.showerror("Nitro Boost", f"Erro: {err}")
+                return
+            if ok:
+                self._cpu_boost = False
+                self._gpu_boost = False
+                self._update_boost_buttons()
+                self.badge.config(text="Automático", fg=ACCENT)
+            else:
+                messagebox.showerror("Nitro Boost", "Falha ao definir modo automático.")
+        self._run_async(do, done)
 
     def _update_boost_buttons(self):
         both_on = self._cpu_boost and self._gpu_boost
@@ -370,37 +388,66 @@ class NitroBoostApp:
 
     def _toggle_both_boost(self):
         both_on = self._cpu_boost and self._gpu_boost
-        new_cpu = new_gpu = not both_on  # toggle: se ambos on -> off; senão -> on
-        if self.boost.set_cooler_boost_individual(new_cpu, new_gpu):
-            self._cpu_boost = new_cpu
-            self._gpu_boost = new_gpu
-            self._update_boost_buttons()
-            self.badge.config(
-                text="Cooler Boost: CPU+GPU" if new_cpu else "Automático",
-                fg=ACCENT if new_cpu else TEXT_MUTED,
-            )
-        else:
-            messagebox.showerror("Nitro Boost", "Falha ao alterar Cooler Boost.")
+        new_cpu = new_gpu = not both_on
+        def do():
+            return self.boost.set_cooler_boost_individual(new_cpu, new_gpu)
+        def done(ok, err):
+            if err:
+                messagebox.showerror("Nitro Boost", f"Erro: {err}")
+                return
+            if ok:
+                self._cpu_boost = new_cpu
+                self._gpu_boost = new_gpu
+                self._update_boost_buttons()
+                self.badge.config(
+                    text="Cooler Boost: CPU+GPU" if new_cpu else "Automático",
+                    fg=ACCENT if new_cpu else TEXT_MUTED,
+                )
+            else:
+                messagebox.showerror("Nitro Boost", "Falha ao alterar Cooler Boost.")
+        self._run_async(do, done)
 
     def _toggle_cpu_boost(self):
         self._cpu_boost = not self._cpu_boost
-        if self.boost.set_cooler_boost_individual(self._cpu_boost, self._gpu_boost):
-            self._update_boost_buttons()
-            parts = [p for p in ["CPU" if self._cpu_boost else None, "GPU" if self._gpu_boost else None] if p]
-            self.badge.config(text=f"Cooler Boost: {', '.join(parts) or 'OFF'}", fg=ACCENT if parts else TEXT_MUTED)
-        else:
-            self._cpu_boost = not self._cpu_boost
-            messagebox.showerror("Nitro Boost", "Falha ao alterar Cooler Boost.")
+        new_cpu, new_gpu = self._cpu_boost, self._gpu_boost
+        def do():
+            return self.boost.set_cooler_boost_individual(new_cpu, new_gpu)
+        def done(ok, err):
+            if err:
+                self._cpu_boost = not new_cpu
+                self._update_boost_buttons()
+                messagebox.showerror("Nitro Boost", f"Erro: {err}")
+                return
+            if ok:
+                self._update_boost_buttons()
+                parts = [p for p in ["CPU" if self._cpu_boost else None, "GPU" if self._gpu_boost else None] if p]
+                self.badge.config(text=f"Cooler Boost: {', '.join(parts) or 'OFF'}", fg=ACCENT if parts else TEXT_MUTED)
+            else:
+                self._cpu_boost = not new_cpu
+                self._update_boost_buttons()
+                messagebox.showerror("Nitro Boost", "Falha ao alterar Cooler Boost.")
+        self._run_async(do, done)
 
     def _toggle_gpu_boost(self):
         self._gpu_boost = not self._gpu_boost
-        if self.boost.set_cooler_boost_individual(self._cpu_boost, self._gpu_boost):
-            self._update_boost_buttons()
-            parts = [p for p in ["CPU" if self._cpu_boost else None, "GPU" if self._gpu_boost else None] if p]
-            self.badge.config(text=f"Cooler Boost: {', '.join(parts) or 'OFF'}", fg=ACCENT if parts else TEXT_MUTED)
-        else:
-            self._gpu_boost = not self._gpu_boost
-            messagebox.showerror("Nitro Boost", "Falha ao alterar Cooler Boost.")
+        new_cpu, new_gpu = self._cpu_boost, self._gpu_boost
+        def do():
+            return self.boost.set_cooler_boost_individual(new_cpu, new_gpu)
+        def done(ok, err):
+            if err:
+                self._gpu_boost = not new_gpu
+                self._update_boost_buttons()
+                messagebox.showerror("Nitro Boost", f"Erro: {err}")
+                return
+            if ok:
+                self._update_boost_buttons()
+                parts = [p for p in ["CPU" if self._cpu_boost else None, "GPU" if self._gpu_boost else None] if p]
+                self.badge.config(text=f"Cooler Boost: {', '.join(parts) or 'OFF'}", fg=ACCENT if parts else TEXT_MUTED)
+            else:
+                self._gpu_boost = not new_gpu
+                self._update_boost_buttons()
+                messagebox.showerror("Nitro Boost", "Falha ao alterar Cooler Boost.")
+        self._run_async(do, done)
 
     def _apply_both_max(self):
         """Define ambas as ventoinhas a 100% e aplica."""
@@ -411,13 +458,20 @@ class NitroBoostApp:
     def _apply_fans(self):
         cpu_pct = self.cpu_slider.get()
         gpu_pct = self.gpu_slider.get()
-        if self.boost.set_custom_fans(cpu_pct, gpu_pct):
-            self._cpu_boost = False
-            self._gpu_boost = False
-            self._update_boost_buttons()
-            self.badge.config(text=f"CPU {cpu_pct}% • GPU {gpu_pct}%", fg=ACCENT)
-        else:
-            messagebox.showerror("Nitro Boost", "Falha ao definir velocidade. Tente modo Automático.")
+        def do():
+            return self.boost.set_custom_fans(cpu_pct, gpu_pct)
+        def done(ok, err):
+            if err:
+                messagebox.showerror("Nitro Boost", f"Erro: {err}")
+                return
+            if ok:
+                self._cpu_boost = False
+                self._gpu_boost = False
+                self._update_boost_buttons()
+                self.badge.config(text=f"CPU {cpu_pct}% • GPU {gpu_pct}%", fg=ACCENT)
+            else:
+                messagebox.showerror("Nitro Boost", "Falha ao definir velocidade. Tente modo Automático.")
+        self._run_async(do, done)
 
     def _poll(self):
         # Single instance: verificar se outra instância pediu foco
