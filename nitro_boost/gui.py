@@ -292,7 +292,10 @@ class NitroBoostApp:
         tk.Label(gpu_row, text="GPU:", font=("", 11), bg=CARD, fg=TEXT, width=6, anchor=tk.W).pack(side=tk.LEFT)
         self.gpu_slider = Slider(gpu_row, from_=0, to=100, value=50, width=180, height=28, bg=CARD)
         self.gpu_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
-        ttk.Button(manual_frame, text="Aplicar ventoinhas", command=self._apply_fans).pack(anchor=tk.W, pady=(8, 0))
+        btn_row = tk.Frame(manual_frame, bg=CARD)
+        btn_row.pack(anchor=tk.W, pady=(8, 0))
+        ttk.Button(btn_row, text="Aplicar ventoinhas", command=self._apply_fans).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(btn_row, text="Ambas 100%", command=self._apply_both_max).pack(side=tk.LEFT)
 
     def _toggle_opts(self):
         self._opts_visible = not self._opts_visible
@@ -398,6 +401,12 @@ class NitroBoostApp:
         else:
             self._gpu_boost = not self._gpu_boost
             messagebox.showerror("Nitro Boost", "Falha ao alterar Cooler Boost.")
+
+    def _apply_both_max(self):
+        """Define ambas as ventoinhas a 100% e aplica."""
+        self.cpu_slider.set(100)
+        self.gpu_slider.set(100)
+        self._apply_fans()
 
     def _apply_fans(self):
         cpu_pct = self.cpu_slider.get()
