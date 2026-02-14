@@ -51,6 +51,18 @@ sudo ./nitro-boost
 - **Cooler Boost** — CPU e GPU individualmente
 - **Manual** — slider 0–100% para cada ventoinha
 
+## Estrutura do projeto
+
+```
+nitro-boost           # script de entrada
+nitro_boost/          # código Python (gui, core, insights)
+assets/               # ícones (SVG, PNG) e create_icon.py
+config/               # .desktop, polkit, sudoers
+install.sh            # instalação
+install-all.sh        # instalação completa (deps + GRUB)
+uninstall.sh          # desinstalação
+```
+
 ## Licença
 
 MIT

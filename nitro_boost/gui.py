@@ -148,6 +148,7 @@ class NitroBoostApp:
         # Ícone da janela (PNG)
         _base = os.path.dirname(os.path.dirname(__file__))
         _icon_paths = [
+            os.path.join(_base, "assets", "nitro-boost-ib.png"),
             os.path.join(_base, "nitro-boost-ib.png"),
             "/usr/local/lib/nitro-boost/nitro-boost-ib.png",
             "/usr/lib/nitro-boost/nitro-boost-ib.png",
